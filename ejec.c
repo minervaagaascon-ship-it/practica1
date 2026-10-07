@@ -5,11 +5,6 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 
-
-/* ================================================================
- * Variables globales
- * ================================================================ */
-
 pid_t g_pid_ejec;
 pid_t g_pid_a;
 pid_t g_pid_b;
@@ -20,10 +15,6 @@ pid_t g_pid_z;
 char g_target_process_char;
 int g_seconds;
 
-
-/* ================================================================
- * Prototipos
- * ================================================================ */
 
 void parse_args(int argc, char *argv[]);
 
@@ -55,14 +46,8 @@ void handler_Z_alarm(int s);
 void handler_Z_destroy_leaf(int s);
 
 
-/* ================================================================
- * Funciones globales y de utilidad
- * ================================================================ */
 
-/*
- * Comprueba que se reciben exactamente dos argumentos y guarda tanto
- * el proceso objetivo como el numero de segundos en variables globales.
- */
+
 void parse_args(int argc, char *argv[]) {
     if (argc != 3) {
         fprintf(stderr, "Uso: %s <proceso> <segundos>\n", argv[0]);
@@ -80,9 +65,6 @@ void parse_args(int argc, char *argv[]) {
 }
 
 
-/* ================================================================
- * Proceso ejec (super-padre)
- * ================================================================ */
 
 int main(int argc, char *argv[]) {
     parse_args(argc, argv);
@@ -101,24 +83,13 @@ int main(int argc, char *argv[]) {
 }
 
 
-/*
- * ejec recibe SIGUSR2 cuando el proceso objetivo ha terminado de ejecutar
- * su comando. La destruccion se propaga comenzando por A.
- */
+
 void handler_start_destruction(int s) {
     (void)s;
     kill(g_pid_a, SIGUSR2);
 }
 
 
-/* ================================================================
- * Proceso A
- * ================================================================ */
-
-/*
- * Crea A. El proceso ejec queda esperando hasta que A haya terminado,
- * garantizando que el padre no muera antes que su hijo.
- */
 void create_A_process(void) {	// este codigo lo hace ejec
     switch (g_pid_a = fork()) {
         case 0:
@@ -131,10 +102,7 @@ void create_A_process(void) {	// este codigo lo hace ejec
 }
 
 
-/*
- * Inicializacion y vida de A. A instala los manejadores de ejecucion y
- * destruccion y continua la construccion del arbol creando B.
- */
+
 void run_process_A(void) {
     g_pid_a = getpid();
     printf("Soy el proceso A: mi pid es %d. Mi padre es %d\n", g_pid_a, g_pid_ejec);
@@ -145,11 +113,7 @@ void run_process_A(void) {
 }
 
 
-/*
- * SIGUSR1 en A: crea un hijo temporal para ejecutar pstree.
- * A permanece intacto. Al terminar el comando se notifica a ejec mediante
- * SIGUSR2 para iniciar la fase de destruccion.
- */
+
 void handler_A_exec_task(int s) {
     pid_t pid;
 
@@ -166,9 +130,7 @@ void handler_A_exec_task(int s) {
 }
 
 
-/*
- * A propaga SIGUSR2 a B y no termina hasta que B haya finalizado.
- */
+
 void handler_A_destroy_and_propagate(int s) {
     (void)s;
 
@@ -180,13 +142,7 @@ void handler_A_destroy_and_propagate(int s) {
 }
 
 
-/* ================================================================
- * Proceso B
- * ================================================================ */
 
-/*
- * Crea B. A espera a que B termine, igual que ejec espera a A.
- */
 void create_B_process(void) {
     switch (g_pid_b = fork()) {
         case 0:
@@ -199,10 +155,7 @@ void create_B_process(void) {
 }
 
 
-/*
- * B instala sus manejadores y crea sus tres hijos X, Y y Z.
- * Despues queda suspendido esperando senales.
- */
+
 void run_process_B(void) {
     g_pid_b = getpid();
 
@@ -222,9 +175,7 @@ void run_process_B(void) {
 }
 
 
-/*
- * SIGUSR1 en B: ejecuta pstree mediante un hijo temporal.
- */
+
 void handler_B_exec_task(int s) {
     pid_t pid;
 
@@ -244,11 +195,6 @@ void handler_B_exec_task(int s) {
 }
 
 
-/*
- * B es padre de X, Y y Z. Para reproducir el orden de destruccion mostrado
- * en el enunciado, destruye y espera primero a Z, despues a Y y por ultimo
- * a X. Solo entonces termina B.
- */
 void handler_B_destroy_and_propagate(int s) {
     (void)s;
 
@@ -266,14 +212,6 @@ void handler_B_destroy_and_propagate(int s) {
 }
 
 
-/* ================================================================
- * Proceso X
- * ================================================================ */
-
-/*
- * B crea X y continua inmediatamente para poder crear tambien Y y Z.
- * No se hace wait() aqui porque los tres hijos deben coexistir.
- */
 void create_X_process(void) {
     switch (g_pid_x = fork()) {
         case 0:
@@ -283,9 +221,6 @@ void create_X_process(void) {
 }
 
 
-/*
- * X queda a la espera de SIGUSR1 (ejecutar ls) o SIGUSR2 (terminar).
- */
 void run_process_X(void) {
     g_pid_x = getpid();
 
@@ -301,10 +236,7 @@ void run_process_X(void) {
 }
 
 
-/*
- * SIGUSR1 en X: ejecuta ls en un hijo temporal y, al finalizar,
- * notifica a ejec con SIGUSR2.
- */
+
 void handler_X_exec_task(int s) {
     pid_t pid;
 
@@ -324,7 +256,7 @@ void handler_X_exec_task(int s) {
 }
 
 
-/* X es una hoja: al recibir SIGUSR2 simplemente termina. */
+
 void handler_X_destroy_leaf(int s) {
     (void)s;
 
@@ -333,11 +265,7 @@ void handler_X_destroy_leaf(int s) {
 }
 
 
-/* ================================================================
- * Proceso Y
- * ================================================================ */
 
-/* B crea Y y continua inmediatamente para crear Z. */
 void create_Y_process(void) {
     switch (g_pid_y = fork()) {
         case 0:
@@ -347,9 +275,7 @@ void create_Y_process(void) {
 }
 
 
-/*
- * Y queda a la espera de SIGUSR1 (ejecutar ls) o SIGUSR2 (terminar).
- */
+
 void run_process_Y(void) {
     g_pid_y = getpid();
 
@@ -365,7 +291,7 @@ void run_process_Y(void) {
 }
 
 
-/* SIGUSR1 en Y: ejecuta ls mediante un hijo temporal. */
+
 void handler_Y_exec_task(int s) {
     pid_t pid;
 
@@ -385,7 +311,7 @@ void handler_Y_exec_task(int s) {
 }
 
 
-/* Y es una hoja: al recibir SIGUSR2 simplemente termina. */
+
 void handler_Y_destroy_leaf(int s) {
     (void)s;
 
@@ -394,14 +320,7 @@ void handler_Y_destroy_leaf(int s) {
 }
 
 
-/* ================================================================
- * Proceso Z
- * ================================================================ */
 
-/*
- * Z se crea despues de X e Y. De esta forma hereda de B los PID ya
- * almacenados de X e Y, ademas de los PID de A y B.
- */
 void create_Z_process(void) {
     switch (g_pid_z = fork()) {
         case 0:
@@ -411,10 +330,6 @@ void create_Z_process(void) {
 }
 
 
-/*
- * Z implementa la temporizacion sin sleep(). Registra SIGALRM, programa
- * alarm(g_seconds) y se suspende con pause() hasta recibir senales.
- */
 void run_process_Z(void) {
     g_pid_z = getpid();
 
@@ -431,10 +346,7 @@ void run_process_Z(void) {
 }
 
 
-/*
- * Cuando vence la alarma, Z envia SIGUSR1 al proceso indicado por el
- * primer argumento del programa.
- */
+
 void handler_Z_alarm(int s) {
     (void)s;
 
@@ -457,8 +369,6 @@ void handler_Z_alarm(int s) {
     }
 }
 
-
-/* Z es una hoja: al recibir SIGUSR2 simplemente termina. */
 void handler_Z_destroy_leaf(int s) {
     (void)s;
 
