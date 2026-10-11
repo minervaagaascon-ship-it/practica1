@@ -73,10 +73,8 @@ int main(int argc, char *argv[]) {
     pid_ejec = getpid();
     printf("Soy el proceso ejec: mi pid es %d\n", pid_ejec);
 
-    /* SIGUSR2 indica que la tarea ha terminado y comienza el apagado. */
-    signal(SIGUSR2, destrucion);    // ejec no ejecuta tareas, solo espera para la destruccion.
+    signal(SIGUSR2, destrucion);    
 
-    /* Crea A y espera a que toda su rama termine. */
     crearA();
 
     printf("Soy ejec (%d) y muero\n", pid_ejec);
